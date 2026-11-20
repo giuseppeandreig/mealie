@@ -125,6 +125,7 @@ const MIGRATIONS = {
   recipekeeper: "recipekeeper",
   tandoor: "tandoor",
   cookn: "cookn",
+  mela: "mela",
 };
 
 definePageMeta({
@@ -190,6 +191,10 @@ const items: MenuItem[] = [
   {
     text: i18n.t("migration.cookn.title"),
     value: MIGRATIONS.cookn,
+  },
+  {
+    text: i18n.t("migration.mela.title"),
+    value: MIGRATIONS.mela,
   },
 ];
 const _content: Record<string, MigrationContent> = {
@@ -330,6 +335,20 @@ const _content: Record<string, MigrationContent> = {
               { title: "thumb.jpg", icon: $globals.icons.fileImage },
             ],
           },
+        ],
+      },
+    ],
+  },
+  [MIGRATIONS.mela]: {
+    text: i18n.t("migration.mela.description-long"),
+    acceptedFileType: ".melarecipes,.zip",
+    tree: [
+      {
+        icon: $globals.icons.zip,
+        title: "Recipes.melarecipes",
+        children: [
+          { title: "recipe-1.melarecipe", icon: $globals.icons.codeJson },
+          { title: "recipe-2.melarecipe", icon: $globals.icons.codeJson },
         ],
       },
     ],

@@ -16,7 +16,8 @@ export type SupportedMigrations =
   | "plantoeat"
   | "myrecipebox"
   | "recipekeeper"
-  | "cookn";
+  | "cookn"
+  | "mela";
 
 export interface AIPromptOut {
   name: string;

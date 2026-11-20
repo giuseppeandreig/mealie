@@ -14,6 +14,7 @@ class SupportedMigrations(enum.StrEnum):
     myrecipebox = "myrecipebox"
     recipekeeper = "recipekeeper"
     cookn = "cookn"
+    mela = "mela"
 
 
 class DataMigrationCreate(MealieModel):

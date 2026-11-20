@@ -14,6 +14,7 @@ from mealie.services.migrations import (
     CooknMigrator,
     CopyMeThatMigrator,
     MealieAlphaMigrator,
+    MelaMigrator,
     MyRecipeBoxMigrator,
     NextcloudMigrator,
     PaprikaMigrator,
@@ -61,6 +62,7 @@ class GroupMigrationController(BaseUserController):
                 SupportedMigrations.myrecipebox: MyRecipeBoxMigrator,
                 SupportedMigrations.recipekeeper: RecipeKeeperMigrator,
                 SupportedMigrations.cookn: CooknMigrator,
+                SupportedMigrations.mela: MelaMigrator,
             }
 
             constructor = table.get(migration_type, None)

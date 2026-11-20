@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from dataclasses import dataclass, field
@@ -9,6 +10,7 @@ from zipfile import ZipFile
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from mealie.schema.group.group_migration import SupportedMigrations
 from mealie.schema.recipe.recipe import RecipeOut
@@ -525,3 +527,89 @@ def test_cookn_reimport_attaches_image_to_renamed_duplicate(
     for slug in ("fresh-fruit-pizza", "fresh-fruit-pizza-1"):
         response = api_client.get(api_routes.recipes_slug(slug), headers=unique_user.token)
         assert RecipeOut.model_validate(assert_deserialize(response)).image
+
+
+def _mela_image() -> str:
+    buffer = BytesIO()
+    Image.new("RGB", (4, 4), "red").save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+def test_mela_imports_recipe_fields(api_client: TestClient, unique_user_fn_scoped: TestUser) -> None:
+    unique_user = unique_user_fn_scoped
+
+    recipe = {
+        "id": "example.com/asian-cucumber-salad",
+        "title": "Mela Cucumber Salad",
+        "text": "A cold salad.",
+        "link": "https://example.com/asian-cucumber-salad/",
+        "yield": "2 servings",
+        "prepTime": "5min",
+        "cookTime": 10,
+        "totalTime": "1h 15 min",
+        "categories": ["Salad", "Quick"],
+        "ingredients": "1 cucumber\n\n3/4 teaspoon salt\n2 cloves garlic, minced",
+        "instructions": "Slice the cucumber.\nMix with the garlic and salt.",
+        "notes": "Chill before you serve.",
+        "nutrition": "**Serving size** 2 people\n**Calories** 95 calories\n**Sugar** 4 g",
+        "date": 651490594.5,
+        "favorite": False,
+        "wantToCook": False,
+        "images": [_mela_image()],
+    }
+    archive = _zip_bytes({"mela-cucumber-salad.melarecipe": json.dumps(recipe)})
+
+    report = _run_migration(api_client, unique_user, SupportedMigrations.mela, archive)
+    assert report["status"] == "success"
+
+    response = api_client.get(api_routes.recipes_slug("mela-cucumber-salad"), headers=unique_user.token)
+    imported = RecipeOut.model_validate(assert_deserialize(response))
+
+    assert imported.name == "Mela Cucumber Salad"
+    assert imported.description == "A cold salad."
+    assert imported.org_url == "https://example.com/asian-cucumber-salad/"
+    assert imported.recipe_servings == 2
+    assert imported.prep_time_seconds == 5 * 60
+    assert imported.perform_time_seconds == 10 * 60
+    assert imported.total_time_seconds == 75 * 60
+    assert sorted(c.name for c in imported.recipe_category or []) == ["Quick", "Salad"]
+    assert [i.note for i in imported.recipe_ingredient] == [
+        "1 cucumber",
+        "3/4 teaspoon salt",
+        "2 cloves garlic, minced",
+    ]
+    assert [step.text for step in imported.recipe_instructions or []] == [
+        "Slice the cucumber.",
+        "Mix with the garlic and salt.",
+    ]
+    assert [note.text for note in imported.notes] == ["Chill before you serve."]
+    assert imported.nutrition
+    assert imported.nutrition.calories == "95"
+    assert imported.nutrition.sugar_content == "4"
+    assert str(imported.date_added) == "2021-08-24"
+    assert imported.image
+
+
+def test_mela_import_continues_after_a_bad_file(api_client: TestClient, unique_user_fn_scoped: TestUser) -> None:
+    unique_user = unique_user_fn_scoped
+
+    archive = _zip_bytes(
+        {
+            "broken.melarecipe": "not json",
+            "untitled.melarecipe": json.dumps({"ingredients": "1 egg"}),
+            "mela-good-recipe.melarecipe": json.dumps(
+                {"title": "Mela Good Recipe", "ingredients": "1 egg", "images": ["not an image"]}
+            ),
+        }
+    )
+
+    report = _run_migration(api_client, unique_user, SupportedMigrations.mela, archive)
+    assert report["status"] == "partial"
+
+    failures = [entry for entry in report["entries"] if not entry["success"]]
+    assert [entry["message"] for entry in failures] == ["Failed to import broken.melarecipe"]
+
+    response = api_client.get(api_routes.recipes_slug("mela-good-recipe"), headers=unique_user.token)
+    imported = RecipeOut.model_validate(assert_deserialize(response))
+    assert imported.name == "Mela Good Recipe"
+    assert not imported.image

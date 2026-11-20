@@ -424,6 +424,10 @@
       "description-long": "Mealie can import recipes from Copy Me That. Export your recipes in HTML format, then upload the .zip below.",
       "title": "Copy Me That Recipe Manager"
     },
+    "mela": {
+      "description-long": "Mealie can import recipes from the Mela application. In Mela, export all recipes, then upload the .melarecipes file below. Mealie imports the first image of each recipe.",
+      "title": "Mela"
+    },
     "paprika": {
       "description-long": "Mealie can import recipes from the Paprika application. Export your recipes from paprika, rename the export extension to .zip and upload it below.",
       "title": "Paprika Recipe Manager"
